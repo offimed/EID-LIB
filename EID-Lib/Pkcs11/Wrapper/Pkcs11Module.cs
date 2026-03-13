@@ -1,6 +1,7 @@
 ﻿
 using System;
 using System.Collections.Generic;
+using System.Net;
 using Net.Sf.Pkcs11.Delegates;
 using System.Runtime.InteropServices;
 
@@ -56,8 +57,9 @@ namespace Net.Sf.Pkcs11.Wrapper
 			}
 			else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
 			{
-				if ((hLib = new KernelUtilUNIX().LoadLibrary(moduleName)) == IntPtr.Zero)
-					throw new Exception("Could not load module. Module name:" + moduleName);
+				if ((hLib = new KernelUtilUNIX().LoadLibrary(moduleName)) == IntPtr.Zero) 
+					if((hLib = new KernelUtilUNIX().LoadLibrary("/Library/Belgium Identity Card/Pkcs11/libbeidpkcs11.dylib")) == IntPtr.Zero)
+						throw new Exception("Could not load module. Module name:" + moduleName);
 			}
 			else
 			{
@@ -67,20 +69,50 @@ namespace Net.Sf.Pkcs11.Wrapper
 
 			return new Pkcs11Module(hLib);
 		}
-		
-		/// <summary>
-		/// 
-		/// </summary>
-		public void Initialize()
+
+
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        internal struct C_INITIALIZE_ARGS
         {
-            C_Initialize proc=(C_Initialize)DelegateUtil.GetDelegate(this.hLib,typeof(C_Initialize));
-			checkCKR( proc(IntPtr.Zero));
-		}
-		
-		/// <summary>
-		/// 
-		/// </summary>
-		public void Finalize_(){
+            public IntPtr CreateMutex;
+            public IntPtr DestroyMutex;
+            public IntPtr LockMutex;
+            public IntPtr UnlockMutex;
+            public U_INT Flags; // IMPORTANT : U_INT au lieu de uint
+            public IntPtr pReserved;
+        }
+
+        // 2. Un pointeur statique qui survivra à toute l'application
+        private static IntPtr _pInitArgs = IntPtr.Zero;
+
+        public void Initialize()
+        {
+            C_Initialize proc = (C_Initialize)DelegateUtil.GetDelegate(this.hLib, typeof(C_Initialize));
+
+            // On ne l'alloue qu'une seule fois pour toute l'application
+            if (_pInitArgs == IntPtr.Zero)
+            {
+                C_INITIALIZE_ARGS initArgs = new C_INITIALIZE_ARGS();
+                initArgs.Flags = 2; // 2 = CKF_OS_LOCKING_OK (Autorise le multi-threading)
+
+                _pInitArgs = Marshal.AllocHGlobal(Marshal.SizeOf(initArgs));
+                Marshal.StructureToPtr(initArgs, _pInitArgs, false);
+            }
+
+            // On initialise, SANS utiliser de try/finally. 
+            // On ne libère jamais _pInitArgs.
+            checkCKR(proc(_pInitArgs));
+        }
+        //public void Initialize()
+        //      {
+        //          C_Initialize proc=(C_Initialize)DelegateUtil.GetDelegate(this.hLib,typeof(C_Initialize));
+        //	checkCKR( proc(IntPtr.Zero));
+        //}
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public void Finalize_(){
 			C_Finalize proc=(C_Finalize)DelegateUtil.GetDelegate(this.hLib,typeof(C_Finalize));
 			checkCKR( proc(IntPtr.Zero));
 		}
@@ -98,31 +130,33 @@ namespace Net.Sf.Pkcs11.Wrapper
 			
 			return ckInfo;
 		}
-		
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="tokenPresent"></param>
-		/// <returns></returns>
-		public U_INT[] GetSlotList(bool tokenPresent){
-			
-			C_GetSlotList proc=(C_GetSlotList)DelegateUtil.GetDelegate(this.hLib,typeof(C_GetSlotList));
-			
-			U_INT pullVal=0;
-			checkCKR( proc(tokenPresent,null,ref pullVal));
-			
-			U_INT[] slots = new U_INT[pullVal];
-			checkCKR( proc(tokenPresent,slots,ref pullVal));
-			
-			return slots;
-		}
-		
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="slotID"></param>
-		/// <returns></returns>
-		public CK_SLOT_INFO GetSlotInfo(U_INT slotID){
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="tokenPresent"></param>
+        /// <returns></returns>
+        public U_INT[] GetSlotList(bool tokenPresent)
+        {
+            C_GetSlotList proc = (C_GetSlotList)DelegateUtil.GetDelegate(this.hLib, typeof(C_GetSlotList));
+
+            U_INT pullVal = 0;
+            checkCKR(proc(tokenPresent, null, ref pullVal));
+
+            if (pullVal == 0) return new U_INT[0]; // Sécurité anti-crash
+
+            U_INT[] slots = new U_INT[pullVal];
+            checkCKR(proc(tokenPresent, slots, ref pullVal));
+
+            return slots;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="slotID"></param>
+        /// <returns></returns>
+        public CK_SLOT_INFO GetSlotInfo(U_INT slotID){
 			
 			C_GetSlotInfo proc=(C_GetSlotInfo)DelegateUtil.GetDelegate(this.hLib,typeof(C_GetSlotInfo));
 			

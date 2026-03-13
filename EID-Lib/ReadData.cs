@@ -18,6 +18,8 @@
 
 **************************************************************************** */
 
+// Doc pkcs11 : https://docs.oasis-open.org/pkcs11/pkcs11-base/v2.40/os/pkcs11-base-v2.40-os.html
+
 using System;
 using System.Collections.Generic;
 
@@ -30,6 +32,7 @@ using Net.Sf.Pkcs11.Objects;
 using Net.Sf.Pkcs11.Wrapper;
 
 using System.Security.Cryptography.X509Certificates;
+using System.Threading.Tasks;
 using System.Timers;
 using PublicKey = Net.Sf.Pkcs11.Objects.PublicKey;
 
@@ -47,14 +50,15 @@ namespace EIDLib
 {
     public class ReadData : IDisposable
     {
-        private static Mutex locker = null;
-        private static Mutex lockerSurname = null;
+        private static SemaphoreSlim _asyncLocker = new SemaphoreSlim(1, 1);
         /// <summary>
         /// If card is plugged (Used by Detection event)
         /// /!\ if you modify that /!\
         /// </summary>
         public bool IsRead = false;
-        private System.Timers.Timer timer = new System.Timers.Timer(1000);
+        private Thread _pollingThread;
+        private bool _isDisposed = false;
+
         public delegate void Detection(string output, bool IsPlugged);
         /// <summary>
         /// Detect if identity card is plugged or no
@@ -68,12 +72,6 @@ namespace EIDLib
         /// </summary>
         public ReadData()
         {
-            if (locker == null)
-                locker = new Mutex();
-
-            if (lockerSurname == null)
-                lockerSurname = new Mutex();
-
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 mFileName = @"beidpkcs11.dll";
@@ -89,72 +87,140 @@ namespace EIDLib
             
             try
             {
-                //lock (locker)
-                if(locker.WaitOne(10))
+                if (IsCardPresent())
                 {
-                    try
-                    {
-                        GetSurname();
-                    }
-                    catch(Exception e)
-                    { }
-
                     IsRead = true;
-
-                    locker.ReleaseMutex();
+                }
+                else
+                {
+                    IsRead = false;
                 }
             }
             catch (Exception e)
             {
                 IsRead = false;
             }
-            
-            timer.Elapsed += (sender, args) =>
-            {
-                if(Detect != null && locker.WaitOne(10))
-                {
-                    if (IsRead)
-                    {
-                        try
-                        {
-                            GetSurname();
-                        }
-                        catch (Exception e)
-                        {
-                            //Console.WriteLine(e);
-                            IsRead = false;
-                            if (Detect != null)
-                                Detect("Identity card unplugged", false);
-                        }
-                    }
-                    else
-                    {
-                        try
-                        {
-                            GetSurname();
-                            IsRead = true;
-                            if (Detect != null)
-                                Detect("Identity card plugged", true);
-                        }
-                        catch (Exception e)
-                        {
-                            //Console.WriteLine(e);
-                        }
-                    }
 
-                    locker.ReleaseMutex();
 
-                }
-            };
-            
-            timer.Start();
+            // Pour la détection de la carte
+            _pollingThread = new Thread(PollCardReader);
+            _pollingThread.IsBackground = true; // S'arrête tout seul quand le programme se ferme
+            _pollingThread.Name = "eID_Hardware_Polling";
+            _pollingThread.Start();
         }
-        
+
+        /// <summary>
+        /// Check if a card is present
+        /// </summary>
+        /// <returns>Present or not</returns>
+        public bool IsCardPresent()
+        {
+            if (!_asyncLocker.Wait(100))
+            {
+                return false;
+            }
+
+            try
+            {
+                if (m == null)
+                {
+                    m = Module.GetInstance(mFileName);
+                }
+
+                // On demande juste au pilote si un lecteur contient un token
+                Slot[] slots = m.GetSlotList(true);
+                return (slots != null && slots.Length > 0);
+            }
+            catch
+            {
+                // Si le pilote renvoie une erreur pendant le retrait, on l'absorbe
+                return false;
+            }
+            finally
+            {
+                _asyncLocker.Release();
+            }
+        }
+
+        private void PollCardReader()
+        {
+            try
+            {
+                if (m == null)
+                {
+                    m = Module.GetInstance(mFileName);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+
+            while (!_isDisposed)
+            {
+                if (Detect != null)
+                {
+                    
+                    try
+                    {
+                        try
+                        {
+                            m.WaitForSlotEvent(
+                                false); // Bloque ici tant qu'on a pas un évennement du lecteur de carte (insertion ou retrait)
+
+                        }
+                        catch (Exception e)
+                        {
+                            Thread.Sleep(200); // Si FUNCTION_NOT_SUPPORTED => On patiente 200 ms pour checker
+                        }
+                        
+                        if (IsRead)
+                        {
+                            if (!IsCardPresent())
+                            {
+                                IsRead = false;
+                                if (Detect != null)
+                                    Detect("Identity card unplugged", false);
+                            }
+                        }
+                        else
+                        {
+
+                            if (IsCardPresent())
+                            {
+                                IsRead = true;
+
+                                if (Detect != null)
+                                    Detect("Identity card plugged", true);
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"Erreur {e?.Message}");
+                    }
+                }
+
+            }
+        }
+
         public void Dispose()
         {
-            m?.Dispose();
-            timer?.Stop();
-            timer?.Dispose();
+            try
+            {
+                m?.Dispose();
+                
+                Thread.Sleep(200);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+            finally
+            {
+                m = null;
+                _isDisposed = true;
+            }
         }
 
         /// <summary>
@@ -192,8 +258,8 @@ namespace EIDLib
             finally
             {
                 //m.Finalize_();
-                m.Dispose();
-                m = null;
+                //m.Dispose();
+                //m = null;
             }
             return slotID;
         }
@@ -236,8 +302,8 @@ namespace EIDLib
             }
             finally
             {
-                m.Dispose();//m.Finalize_();
-                m = null;
+                //m.Dispose();//m.Finalize_();
+                //m = null;
             }
             return tokenInfoLabel;
 
@@ -305,22 +371,10 @@ namespace EIDLib
         /// <returns></returns>
         public string GetSurname()
         {
-            string ret;
-
-            try
-            {
-                lockerSurname.WaitOne();
-                {
-                    ret = GetData("surname");
-                }
-            }
-            finally
-            {
-                lockerSurname.ReleaseMutex();
-            }
-
-            return ret;
+            return GetData("surname");
         }
+        
+        
 
         /// <summary>
         /// Get firstnames of the owner of the token (eid) in the first non-empty slot (cardreader)
@@ -713,7 +767,7 @@ namespace EIDLib
         {
             return BytesToHEXStringConverter(Encoding.UTF8.GetBytes(GetData("carddata_signature")));
         }
-        
+
         /// <summary>
         /// Generic function to get string data objects from label
         /// </summary>
@@ -722,74 +776,165 @@ namespace EIDLib
         public string GetData(String label)
         {
             String value = "";
-            if (m == null)
-            {
-                m = Module.GetInstance(mFileName);
-            }
-            // pkcs11 module init
-            //m.Initialize();
+            _asyncLocker.Wait();
+
             try
             {
-                // Get the first slot (cardreader) with a token
+                if (m == null) m = Module.GetInstance(mFileName);
+
                 Slot[] slotlist = m.GetSlotList(true);
                 if (slotlist.Length > 0)
                 {
                     Slot slot = slotlist[0];
-
-                    //Session session = slot.Token.OpenSession(true);
                     Session session = CreateSession(slot);
                     if (session != null)
                     {
-
-                        // Search for objects
-                        // First, define a search template 
-
-                        // "The label attribute of the objects should equal ..."
-                        ByteArrayAttribute classAttribute = new ByteArrayAttribute(CKA.CLASS);
-                        classAttribute.Value = BitConverter.GetBytes((U_INT)Net.Sf.Pkcs11.Wrapper.CKO.DATA);
-
-
-                        ByteArrayAttribute labelAttribute = new ByteArrayAttribute(CKA.LABEL);
-                        labelAttribute.Value = System.Text.Encoding.UTF8.GetBytes(label);
-
-
-                        session.FindObjectsInit(new P11Attribute[] { classAttribute, labelAttribute });
-                        P11Object[] foundObjects = session.FindObjects(50);
-                        int counter = foundObjects.Length;
-                        Data data;
-                        while (counter > 0)
+                        try
                         {
-                            //foundObjects[counter-1].ReadAttributes(session);
-                            //public static BooleanAttribute ReadAttribute(Session session, U_INT hObj, BooleanAttribute attr)
-                            data = foundObjects[counter - 1] as Data;
-                            label = data.Label.ToString();
-                            if (label != null)
-                                Console.WriteLine(label);
-                            if (data.Value.Value != null)
+                            ByteArrayAttribute classAttribute = new ByteArrayAttribute(CKA.CLASS);
+                            classAttribute.Value = BitConverter.GetBytes((U_INT)CKO.DATA);
+
+                            ByteArrayAttribute labelAttribute = new ByteArrayAttribute(CKA.LABEL);
+                            labelAttribute.Value = Encoding.UTF8.GetBytes(label);
+
+                            P11Attribute[] searchTemplate = new P11Attribute[] { classAttribute, labelAttribute };
+
+                            session.FindObjectsInit(searchTemplate);
+
+                            // OPTIMISATION : On demande 1 seul objet au lieu de 50
+                            P11Object[] foundObjects = session.FindObjects(1);
+
+                            if (foundObjects != null && foundObjects.Length > 0)
                             {
-                                value = System.Text.Encoding.UTF8.GetString(data.Value.Value);
-                                //Console.WriteLine(value);
+                                Data data = foundObjects[0] as Data;
+                                if (data?.Value?.Value != null)
+                                {
+                                    value = Encoding.UTF8.GetString(data.Value.Value);
+                                }
                             }
-                            counter--;
+                            session.FindObjectsFinal();
+
+                            GC.KeepAlive(searchTemplate);
+                            GC.KeepAlive(classAttribute);
+                            GC.KeepAlive(labelAttribute);
                         }
-                        session.FindObjectsFinal();
-                        session.Dispose();
+                        finally
+                        {
+                            session?.Dispose();
+                        }
                     }
                 }
                 else
                 {
-                    Console.WriteLine("No card found\n");
-                    throw new Exception("No card found");
+                    return null;
                 }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                return null;
             }
             finally
             {
-                // pkcs11 finalize
-                m.Dispose();//m.Finalize_();
-                m = null;
+                _asyncLocker.Release();
             }
             return value;
         }
+        //public string GetData(String label)
+        //{
+        //    ByteArrayAttribute classAttribute = new ByteArrayAttribute(CKA.CLASS);
+        //    ByteArrayAttribute labelAttribute = new ByteArrayAttribute(CKA.LABEL);
+        //    P11Object[] foundObjects = null;
+        //    String value = "";
+
+        //    _asyncLocker.Wait();
+
+        //    if (m == null)
+        //    {
+        //        m = Module.GetInstance(mFileName);
+        //    }
+        //    // pkcs11 module init
+        //    //m.Initialize();
+
+        //    try
+        //    {
+        //        // Get the first slot (cardreader) with a token
+        //        Slot[] slotlist = m.GetSlotList(true);
+        //        if (slotlist.Length > 0)
+        //        {
+        //            Slot slot = slotlist[0];
+
+        //            //Session session = slot.Token.OpenSession(true);
+        //            Session session = CreateSession(slot);
+        //            if (session != null)
+        //            {
+
+        //                try
+        //                {
+        //                    // Search for objects
+        //                    // First, define a search template 
+
+        //                    // "The label attribute of the objects should equal ..."
+
+        //                    classAttribute.Value = BitConverter.GetBytes((U_INT)CKO.DATA);
+
+        //                    labelAttribute.Value = Encoding.UTF8.GetBytes(label);
+
+        //                    // Pour le garbage collector
+        //                    P11Attribute[] searchTemplate = new P11Attribute[] { classAttribute, labelAttribute };
+
+        //                    session.FindObjectsInit(searchTemplate);
+
+        //                    foundObjects = session.FindObjects(50);
+        //                    int counter = foundObjects.Length;
+        //                    Data data;
+        //                    while (counter > 0)
+        //                    {
+        //                        //foundObjects[counter-1].ReadAttributes(session);
+        //                        //public static BooleanAttribute ReadAttribute(Session session, U_INT hObj, BooleanAttribute attr)
+        //                        data = foundObjects[counter - 1] as Data;
+        //                        label = data.Label.ToString();
+        //                        if (label != null)
+        //                            Console.WriteLine(label);
+        //                        if (data.Value.Value != null)
+        //                        {
+        //                            value = Encoding.UTF8.GetString(data.Value.Value);
+        //                            //Console.WriteLine(value);
+        //                        }
+        //                        counter--;
+        //                    }
+        //                    session.FindObjectsFinal();
+        //                    //session.Dispose();
+
+        //                    // On rappelle au GB Collector qu'ils doivent rester en vie car ils sont en cours d'utilisation
+        //                    GC.KeepAlive(searchTemplate);
+        //                    GC.KeepAlive(classAttribute);
+        //                    GC.KeepAlive(labelAttribute);
+        //                }
+        //                finally
+        //                {
+        //                    session?.Dispose();
+        //                }
+        //            }
+        //        }
+        //        else
+        //        {
+        //            Console.WriteLine("No card found\n");
+        //            throw new Exception("No card found");
+        //        }
+        //    }
+        //    finally
+        //    {
+        //        // pkcs11 finalize
+        //        //m.Dispose();//m.Finalize_();
+        //        //m = null;
+
+        //        _asyncLocker.Release();
+        //    }
+        //    return value;
+        //}
+
+
 
         public void GetAndTestIdFile()
         {
@@ -872,61 +1017,117 @@ namespace EIDLib
         private byte[] GetFile(String Filename)
         {
             byte[] value = null;
-            // pkcs11 module init
-            if (m == null)
-            {
-                m = Module.GetInstance(mFileName);
-            }
-            //m.Initialize();
+            _asyncLocker.Wait();
+
             try
             {
-                // Get the first slot (cardreader) with a token
+                if (m == null) m = Module.GetInstance(mFileName);
+
                 Slot[] slotlist = m.GetSlotList(true);
-
-                if (slotlist == null)
-                {
-                    Console.WriteLine("No card reader found");
-                    throw new Exception("No card reader found");
-                }
-
                 if (slotlist.Length > 0)
                 {
                     Slot slot = slotlist[0];
-                    Session session = slot.Token.OpenSession(true);
-
-                    // Search for objects
-                    // First, define a search template 
-
-                    // "The label attribute of the objects should equal ..."                
-                    ByteArrayAttribute fileLabel = new ByteArrayAttribute(CKA.LABEL);
-                    fileLabel.Value = System.Text.Encoding.UTF8.GetBytes(Filename);
-                    ByteArrayAttribute fileData = new ByteArrayAttribute(CKA.CLASS);
-                    fileData.Value = BitConverter.GetBytes((U_INT)Net.Sf.Pkcs11.Wrapper.CKO.DATA);
-                    session.FindObjectsInit(new P11Attribute[] {
-                        fileLabel,fileData
-                    });
-                    P11Object[] foundObjects = session.FindObjects(1);
-                    if (foundObjects.Length != 0)
+                    Session session = CreateSession(slot);
+                    if (session != null)
                     {
-                        Data file = foundObjects[0] as Data;
-                        value = file.Value.Value;
+                        try
+                        {
+                            ByteArrayAttribute fileLabel = new ByteArrayAttribute(CKA.LABEL);
+                            fileLabel.Value = System.Text.Encoding.UTF8.GetBytes(Filename);
+
+                            ByteArrayAttribute fileData = new ByteArrayAttribute(CKA.CLASS);
+                            fileData.Value = BitConverter.GetBytes((U_INT)Net.Sf.Pkcs11.Wrapper.CKO.DATA);
+
+                            P11Attribute[] searchTemplate = new P11Attribute[] { fileLabel, fileData };
+                            session.FindObjectsInit(searchTemplate);
+
+                            P11Object[] foundObjects = session.FindObjects(1);
+                            if (foundObjects != null && foundObjects.Length != 0)
+                            {
+                                Data file = foundObjects[0] as Data;
+                                value = file?.Value?.Value;
+                            }
+                            session.FindObjectsFinal();
+
+                            GC.KeepAlive(searchTemplate);
+                            GC.KeepAlive(fileLabel);
+                            GC.KeepAlive(fileData);
+                        }
+                        finally
+                        {
+                            session?.Dispose();
+                        }
                     }
-                    session.FindObjectsFinal();
                 }
-                else
-                {
-                    Console.WriteLine("No card found\n");
-                    throw new Exception("No card found");
-                }
+            }
+            catch
+            {
+                return null;
             }
             finally
             {
-                // pkcs11 finalize
-                m.Dispose();//m.Finalize_();
-                m = null;
+                _asyncLocker.Release();
             }
             return value;
         }
+        //private byte[] GetFile(String Filename)
+        //{
+        //    byte[] value = null;
+        //    // pkcs11 module init
+        //    if (m == null)
+        //    {
+        //        m = Module.GetInstance(mFileName);
+        //    }
+        //    //m.Initialize();
+        //    try
+        //    {
+        //        // Get the first slot (cardreader) with a token
+        //        Slot[] slotlist = m.GetSlotList(true);
+
+        //        if (slotlist == null)
+        //        {
+        //            Console.WriteLine("No card reader found");
+        //            throw new Exception("No card reader found");
+        //        }
+
+        //        if (slotlist.Length > 0)
+        //        {
+        //            Slot slot = slotlist[0];
+        //            Session session = slot.Token.OpenSession(true);
+
+        //            // Search for objects
+        //            // First, define a search template 
+
+        //            // "The label attribute of the objects should equal ..."                
+        //            ByteArrayAttribute fileLabel = new ByteArrayAttribute(CKA.LABEL);
+        //            fileLabel.Value = System.Text.Encoding.UTF8.GetBytes(Filename);
+        //            ByteArrayAttribute fileData = new ByteArrayAttribute(CKA.CLASS);
+        //            fileData.Value = BitConverter.GetBytes((U_INT)Net.Sf.Pkcs11.Wrapper.CKO.DATA);
+        //            session.FindObjectsInit(new P11Attribute[] {
+        //                fileLabel,fileData
+        //            });
+        //            P11Object[] foundObjects = session.FindObjects(1);
+        //            if (foundObjects.Length != 0)
+        //            {
+        //                Data file = foundObjects[0] as Data;
+        //                value = file.Value.Value;
+        //            }
+        //            session.FindObjectsFinal();
+        //        }
+        //        else
+        //        {
+        //            Console.WriteLine("No card found\n");
+        //            throw new Exception("No card found");
+        //        }
+        //    }
+        //    finally
+        //    {
+        //        // pkcs11 finalize
+        //        //m.Dispose();//m.Finalize_();
+        //        //m = null;
+        //    }
+        //    return value;
+        //}
         /// <summary>
         /// Return the "authentication" leaf certificate file
         /// </summary>
@@ -966,64 +1167,119 @@ namespace EIDLib
         /// <returns>byte array with certificate file</returns>
         private byte[] GetCertificateFile(String Certificatename)
         {
-            // returns Root Certificate on the eid.
             byte[] value = null;
-            // pkcs11 module init
-            if (m == null)
-            {
-                m = Module.GetInstance(mFileName);
-            }
-            //m.Initialize();
+            _asyncLocker.Wait();
+
             try
             {
-                // Get the first slot (cardreader) with a token
+                if (m == null) m = Module.GetInstance(mFileName);
+
                 Slot[] slotlist = m.GetSlotList(true);
-
-                if (slotlist == null)
-                {
-                    Console.WriteLine("No card reader found");
-                    throw new Exception("No card reader found");
-                }
-
-
                 if (slotlist.Length > 0)
                 {
                     Slot slot = slotlist[0];
-                    Session session = slot.Token.OpenSession(true);
-                    // Search for objects
-                    // First, define a search template 
-
-                    // "The label attribute of the objects should equal ..."      
-                    ByteArrayAttribute fileLabel = new ByteArrayAttribute(CKA.LABEL);
-                    ObjectClassAttribute certificateAttribute = new ObjectClassAttribute(CKO.CERTIFICATE);
-                    fileLabel.Value = System.Text.Encoding.UTF8.GetBytes(Certificatename);
-                    session.FindObjectsInit(new P11Attribute[] {
-                        certificateAttribute,
-                        fileLabel
-                    });
-                    P11Object[] foundObjects = session.FindObjects(1);
-                    if (foundObjects.Length != 0)
+                    Session session = CreateSession(slot);
+                    if (session != null)
                     {
-                        X509PublicKeyCertificate cert = foundObjects[0] as X509PublicKeyCertificate;
-                        value = cert.Value.Value;
+                        try
+                        {
+                            ByteArrayAttribute fileLabel = new ByteArrayAttribute(CKA.LABEL);
+                            fileLabel.Value = System.Text.Encoding.UTF8.GetBytes(Certificatename);
+
+                            ObjectClassAttribute certificateAttribute = new ObjectClassAttribute(CKO.CERTIFICATE);
+
+                            P11Attribute[] searchTemplate = new P11Attribute[] { certificateAttribute, fileLabel };
+                            session.FindObjectsInit(searchTemplate);
+
+                            P11Object[] foundObjects = session.FindObjects(1);
+                            if (foundObjects != null && foundObjects.Length != 0)
+                            {
+                                X509PublicKeyCertificate cert = foundObjects[0] as X509PublicKeyCertificate;
+                                value = cert?.Value?.Value;
+                            }
+                            session.FindObjectsFinal();
+
+                            GC.KeepAlive(searchTemplate);
+                            GC.KeepAlive(fileLabel);
+                            GC.KeepAlive(certificateAttribute);
+                        }
+                        finally
+                        {
+                            session?.Dispose();
+                        }
                     }
-                    session.FindObjectsFinal();
                 }
-                else
-                {
-                    Console.WriteLine("No card found\n");
-                    throw new Exception("No card found");
-                }
+            }
+            catch
+            {
+                return null;
             }
             finally
             {
-                // pkcs11 finalize
-                m.Dispose();//m.Finalize_();
-                m = null;
+                _asyncLocker.Release();
             }
             return value;
-
         }
+        //private byte[] GetCertificateFile(String Certificatename)
+        //{
+        //    // returns Root Certificate on the eid.
+        //    byte[] value = null;
+        //    // pkcs11 module init
+        //    if (m == null)
+        //    {
+        //        m = Module.GetInstance(mFileName);
+        //    }
+        //    //m.Initialize();
+        //    try
+        //    {
+        //        // Get the first slot (cardreader) with a token
+        //        Slot[] slotlist = m.GetSlotList(true);
+
+        //        if (slotlist == null)
+        //        {
+        //            Console.WriteLine("No card reader found");
+        //            throw new Exception("No card reader found");
+        //        }
+
+
+        //        if (slotlist.Length > 0)
+        //        {
+        //            Slot slot = slotlist[0];
+        //            Session session = slot.Token.OpenSession(true);
+        //            // Search for objects
+        //            // First, define a search template 
+
+        //            // "The label attribute of the objects should equal ..."      
+        //            ByteArrayAttribute fileLabel = new ByteArrayAttribute(CKA.LABEL);
+        //            ObjectClassAttribute certificateAttribute = new ObjectClassAttribute(CKO.CERTIFICATE);
+        //            fileLabel.Value = System.Text.Encoding.UTF8.GetBytes(Certificatename);
+        //            session.FindObjectsInit(new P11Attribute[] {
+        //                certificateAttribute,
+        //                fileLabel
+        //            });
+        //            P11Object[] foundObjects = session.FindObjects(1);
+        //            if (foundObjects.Length != 0)
+        //            {
+        //                X509PublicKeyCertificate cert = foundObjects[0] as X509PublicKeyCertificate;
+        //                value = cert.Value.Value;
+        //            }
+        //            session.FindObjectsFinal();
+        //        }
+        //        else
+        //        {
+        //            Console.WriteLine("No card found\n");
+        //            throw new Exception("No card found");
+        //        }
+        //    }
+        //    finally
+        //    {
+        //        // pkcs11 finalize
+        //        //m.Dispose();//m.Finalize_();
+        //        //m = null;
+        //    }
+        //    return value;
+
+        //}
         /// <summary>
         /// Returns a list of PKCS11 labels of the certificate on the card
         /// </summary>
@@ -1080,8 +1336,8 @@ namespace EIDLib
             finally
             {
                 // pkcs11 finalize
-                m.Dispose();//m.Finalize_();
-                m = null;
+                //m.Dispose();//m.Finalize_();
+                //m = null;
             }
             return labels;
         }
@@ -1145,8 +1401,8 @@ namespace EIDLib
             finally
             {
                 // pkcs11 finalize
-                m.Dispose();//m.Finalize_();
-                m = null;
+                //m.Dispose();//m.Finalize_();
+                //m = null;
             }
             return eCPublicKey;
         }

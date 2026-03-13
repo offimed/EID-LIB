@@ -22,9 +22,16 @@ namespace TestEID
 
                 if (isPlugged) // Card is plugged
                 {
-                    Console.WriteLine(data.GetFirstnames());
-                    Console.WriteLine(data.GetSurname());
-                    Console.WriteLine(data.GetDateOfBirth());
+                    try
+                    {
+                        Console.WriteLine(data.GetFirstnames());
+                        Console.WriteLine(data.GetSurname());
+                        Console.WriteLine(data.GetDateOfBirth());
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                    }
                 }
             };
 

@@ -64,6 +64,7 @@ namespace Net.Sf.Pkcs11
         /// <returns></returns>				
         public static Module GetInstance(String moduleName)
         {
+            
             if (moduleName == null)
             {
                 throw new Exception("Argument \"pkcs11ModuleName\" must not be null.");
