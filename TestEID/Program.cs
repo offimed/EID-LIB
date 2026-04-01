@@ -11,7 +11,7 @@ namespace TestEID
         {
             Settings.SetLanguage(Settings.Language.fr);
 
-            ReadData data = new ReadData();
+            ReadData data = ReadData.Instance;
 
             // Identity card detection tests
             
@@ -37,8 +37,7 @@ namespace TestEID
 
             Console.ReadKey();
             
-            data.Dispose();
-            data = null;
+            
             //System.Security.Cryptography.X509Certificates.X509Certificate2 cert = new System.Security.Cryptography.X509Certificates.X509Certificate2(data.GetCertificateAuthenticationFile());
             
             /*
@@ -145,7 +144,7 @@ namespace TestEID
             // Test electronic signature
 
             Integrity integrity = new Integrity();
-            Sign signer = new Sign();
+            Sign signer = Sign.Instance;
 
             string ASigner = "Hello World";
 

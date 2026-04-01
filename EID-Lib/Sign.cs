@@ -35,14 +35,20 @@ using System.Threading;
 
 namespace EIDLib
 {
-    public class Sign : IDisposable
+    public sealed class Sign// : IDisposable
     {
+        private static readonly Lazy<Sign> _instance = new Lazy<Sign>(() => new Sign());
+        /// <summary>
+        /// Get Sign instance
+        /// </summary>
+        public static Sign Instance => _instance.Value;
+        
         private String mFileName;
         
         /// <summary>
         /// Default constructor. Will instantiate the beidpkcs11.dll pkcs11 module
         /// </summary>
-        public Sign()
+        private Sign()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -196,23 +202,6 @@ namespace EIDLib
             }
             return encryptedData;
         }
-
-        public void Dispose()
-        {
-            try
-            {
-                //ReadData.module?.Dispose();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-            }
-            finally
-            {
-                //ReadData.module = null;
-                
-                //Thread.Sleep(200);
-            }
-        }
+        
     }
 }

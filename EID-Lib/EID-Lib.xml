@@ -37,6 +37,11 @@
             <param name="leafCertificate">The certificate whose chain will be checked</param>
             <returns>True if the certificate is trusted according to the system settings</returns>
         </member>
+        <member name="P:EIDLib.ReadData.Instance">
+            <summary>
+            Get ReadData instance
+            </summary>
+        </member>
         <member name="F:EIDLib.ReadData.IsRead">
             <summary>
             If card is plugged (Used by Detection event)
@@ -46,11 +51,6 @@
         <member name="E:EIDLib.ReadData.Detect">
             <summary>
             Detect if identity card is plugged or no
-            </summary>
-        </member>
-        <member name="P:EIDLib.ReadData.InstanceCount">
-            <summary>
-            Show instance count in app
             </summary>
         </member>
         <member name="M:EIDLib.ReadData.#ctor">
@@ -488,6 +488,11 @@
             <param name="PubKeyName">Label value of the key object</param>
             <returns>ECPublicKey object of the public key found</returns>
         </member>
+        <member name="P:EIDLib.Sign.Instance">
+            <summary>
+            Get Sign instance
+            </summary>
+        </member>
         <member name="M:EIDLib.Sign.#ctor">
             <summary>
             Default constructor. Will instantiate the beidpkcs11.dll pkcs11 module
@@ -746,7 +751,7 @@
             Session Handle / id
             </summary>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Session.#ctor(Net.Sf.Pkcs11.Token,System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Session.#ctor(Net.Sf.Pkcs11.Token,System.UInt32)">
             <summary>
             Constructor
             </summary>
@@ -991,14 +996,14 @@
             <param name="tokenPresent"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetSlotInfo(System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetSlotInfo(System.UInt32)">
             <summary>
             
             </summary>
             <param name="slotID"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetTokenInfo(System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetTokenInfo(System.UInt32)">
             <summary>
             
             </summary>
@@ -1012,14 +1017,14 @@
             <param name="options"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetMechanismList(System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetMechanismList(System.UInt32)">
             <summary>
             
             </summary>
             <param name="slotId"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetMechanismInfo(System.UInt64,Net.Sf.Pkcs11.Wrapper.CKM)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetMechanismInfo(System.UInt32,Net.Sf.Pkcs11.Wrapper.CKM)">
             <summary>
             
             </summary>
@@ -1027,7 +1032,7 @@
             <param name="mechanism"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.InitToken(System.UInt64,System.String,System.String)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.InitToken(System.UInt32,System.String,System.String)">
             <summary>
             
             </summary>
@@ -1035,14 +1040,14 @@
             <param name="pin"></param>
             <param name="label"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.InitPIN(System.UInt64,System.String)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.InitPIN(System.UInt32,System.String)">
             <summary>
             
             </summary>
             <param name="hSession"></param>
             <param name="pin"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.SetPIN(System.UInt64,System.String,System.String)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.SetPIN(System.UInt32,System.String,System.String)">
             <summary>
             
             </summary>
@@ -1050,7 +1055,7 @@
             <param name="oldPin"></param>
             <param name="newPin"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.OpenSession(System.UInt64,System.UInt64,System.Boolean)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.OpenSession(System.UInt32,System.UInt32,System.Boolean)">
             <summary>
             
             </summary>
@@ -1059,33 +1064,33 @@
             <param name="readOnly"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.CloseSession(System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.CloseSession(System.UInt32)">
             <summary>
             
             </summary>
             <param name="hSession"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.CloseAllSessions(System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.CloseAllSessions(System.UInt32)">
             <summary>
             
             </summary>
             <param name="slotId"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetSessionInfo(System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetSessionInfo(System.UInt32)">
             <summary>
             
             </summary>
             <param name="hSession"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetOperationState(System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetOperationState(System.UInt32)">
             <summary>
             
             </summary>
             <param name="hSession"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.SetOperationState(System.UInt64,System.Byte[],System.UInt64,System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.SetOperationState(System.UInt32,System.Byte[],System.UInt32,System.UInt32)">
             <summary>
             
             </summary>
@@ -1094,7 +1099,7 @@
             <param name="hEncryptionKey"></param>
             <param name="hAuthenticationKey"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.Login(System.UInt64,Net.Sf.Pkcs11.Wrapper.CKU,System.String)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.Login(System.UInt32,Net.Sf.Pkcs11.Wrapper.CKU,System.String)">
             <summary>
             
             </summary>
@@ -1102,13 +1107,13 @@
             <param name="userType"></param>
             <param name="pin"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.Logout(System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.Logout(System.UInt32)">
             <summary>
             
             </summary>
             <param name="hSession"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.CreateObject(System.UInt64,Net.Sf.Pkcs11.Wrapper.CK_ATTRIBUTE[])">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.CreateObject(System.UInt32,Net.Sf.Pkcs11.Wrapper.CK_ATTRIBUTE[])">
             <summary>
             
             </summary>
@@ -1116,14 +1121,14 @@
             <param name="template"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.DestroyObject(System.UInt64,System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.DestroyObject(System.UInt32,System.UInt32)">
             <summary>
             
             </summary>
             <param name="hSession"></param>
             <param name="hObj"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetObjectSize(System.UInt64,System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetObjectSize(System.UInt32,System.UInt32)">
             <summary>
             
             </summary>
@@ -1131,7 +1136,7 @@
             <param name="hObj"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetAttributeValue(System.UInt64,System.UInt64,Net.Sf.Pkcs11.Wrapper.CK_ATTRIBUTE[])">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.GetAttributeValue(System.UInt32,System.UInt32,Net.Sf.Pkcs11.Wrapper.CK_ATTRIBUTE[])">
             <summary>
             
             </summary>
@@ -1140,7 +1145,7 @@
             <param name="template"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.SetAttributeValue(System.UInt64,System.UInt64,Net.Sf.Pkcs11.Wrapper.CK_ATTRIBUTE[])">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.SetAttributeValue(System.UInt32,System.UInt32,Net.Sf.Pkcs11.Wrapper.CK_ATTRIBUTE[])">
             <summary>
             
             </summary>
@@ -1148,14 +1153,14 @@
             <param name="hObj"></param>
             <param name="pTemplate"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.FindObjectsInit(System.UInt64,Net.Sf.Pkcs11.Wrapper.CK_ATTRIBUTE[])">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.FindObjectsInit(System.UInt32,Net.Sf.Pkcs11.Wrapper.CK_ATTRIBUTE[])">
             <summary>
             
             </summary>
             <param name="hSession"></param>
             <param name="pTemplate"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.FindObjects(System.UInt64,System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.FindObjects(System.UInt32,System.UInt32)">
             <summary>
             
             </summary>
@@ -1163,13 +1168,13 @@
             <param name="maxCount"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.FindObjectsFinal(System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.FindObjectsFinal(System.UInt32)">
             <summary>
             
             </summary>
             <param name="hSession"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.EncryptInit(System.UInt64,Net.Sf.Pkcs11.Wrapper.CK_MECHANISM,System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.EncryptInit(System.UInt32,Net.Sf.Pkcs11.Wrapper.CK_MECHANISM,System.UInt32)">
             <summary>
             
             </summary>
@@ -1177,7 +1182,7 @@
             <param name="pMechanism"></param>
             <param name="hKey"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.Encrypt(System.UInt64,System.Byte[])">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.Encrypt(System.UInt32,System.Byte[])">
             <summary>
             
             </summary>
@@ -1185,7 +1190,7 @@
             <param name="pData"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.EncryptUpdate(System.UInt64,System.Byte[])">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.EncryptUpdate(System.UInt32,System.Byte[])">
             <summary>
             
             </summary>
@@ -1193,14 +1198,14 @@
             <param name="pPart"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.EncryptFinal(System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.EncryptFinal(System.UInt32)">
             <summary>
             
             </summary>
             <param name="hSession"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.DecryptInit(System.UInt64,Net.Sf.Pkcs11.Wrapper.CK_MECHANISM,System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.DecryptInit(System.UInt32,Net.Sf.Pkcs11.Wrapper.CK_MECHANISM,System.UInt32)">
             <summary>
             
             </summary>
@@ -1208,7 +1213,7 @@
             <param name="pMechanism"></param>
             <param name="hKey"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.Decrypt(System.UInt64,System.Byte[])">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.Decrypt(System.UInt32,System.Byte[])">
             <summary>
             
             </summary>
@@ -1216,7 +1221,7 @@
             <param name="pEncryptedData"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.DecryptUpdate(System.UInt64,System.Byte[])">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.DecryptUpdate(System.UInt32,System.Byte[])">
             <summary>
             
             </summary>
@@ -1224,14 +1229,14 @@
             <param name="pEncryptedPart"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.DecryptFinal(System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.DecryptFinal(System.UInt32)">
             <summary>
             
             </summary>
             <param name="hSession"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.DigestInit(System.UInt64,Net.Sf.Pkcs11.Wrapper.CK_MECHANISM)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.DigestInit(System.UInt32,Net.Sf.Pkcs11.Wrapper.CK_MECHANISM)">
             <summary>
             
             </summary>
@@ -1239,7 +1244,7 @@
             <param name="pMechanism"></param>
             <param name="hKey"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.Digest(System.UInt64,System.Byte[])">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.Digest(System.UInt32,System.Byte[])">
             <summary>
             
             </summary>
@@ -1247,21 +1252,21 @@
             <param name="pData"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.DigestKey(System.UInt64,System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.DigestKey(System.UInt32,System.UInt32)">
             <summary>
             
             </summary>
             <param name="hSession"></param>
             <param name="hKey"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.DigestFinal(System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.DigestFinal(System.UInt32)">
             <summary>
             
             </summary>
             <param name="hSession"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.SignInit(System.UInt64,Net.Sf.Pkcs11.Wrapper.CK_MECHANISM,System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.SignInit(System.UInt32,Net.Sf.Pkcs11.Wrapper.CK_MECHANISM,System.UInt32)">
             <summary>
             
             </summary>
@@ -1269,7 +1274,7 @@
             <param name="pMechanism"></param>
             <param name="hKey"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.Sign(System.UInt64,System.Byte[])">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.Sign(System.UInt32,System.Byte[])">
             <summary>
             
             </summary>
@@ -1277,21 +1282,21 @@
             <param name="pData"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.SignUpdate(System.UInt64,System.Byte[])">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.SignUpdate(System.UInt32,System.Byte[])">
             <summary>
             
             </summary>
             <param name="hSession"></param>
             <param name="pPart"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.SignFinal(System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.SignFinal(System.UInt32)">
             <summary>
             
             </summary>
             <param name="hSession"></param>
             <returns></returns>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.VerifyInit(System.UInt64,Net.Sf.Pkcs11.Wrapper.CK_MECHANISM,System.UInt64)">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.VerifyInit(System.UInt32,Net.Sf.Pkcs11.Wrapper.CK_MECHANISM,System.UInt32)">
             <summary>
             
             </summary>
@@ -1299,7 +1304,7 @@
             <param name="pMechanism"></param>
             <param name="hKey"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.Verify(System.UInt64,System.Byte[],System.Byte[])">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.Verify(System.UInt32,System.Byte[],System.Byte[])">
             <summary>
             
             </summary>
@@ -1307,7 +1312,7 @@
             <param name="pData"></param>
             <param name="signature"></param>
         </member>
-        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.VerifyFinal(System.UInt64,System.Byte[])">
+        <member name="M:Net.Sf.Pkcs11.Wrapper.Pkcs11Module.VerifyFinal(System.UInt32,System.Byte[])">
             <summary>
             
             </summary>

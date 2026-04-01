@@ -49,8 +49,14 @@ using System.Threading;
 namespace EIDLib
 {
     
-    public class ReadData : IDisposable
+    public sealed class ReadData// : IDisposable
     {
+        private static readonly Lazy<ReadData> _instance = new Lazy<ReadData>(() => new ReadData());
+        /// <summary>
+        /// Get ReadData instance
+        /// </summary>
+        public static ReadData Instance => _instance.Value;
+        
         public static SemaphoreSlim _asyncLocker = new SemaphoreSlim(1, 1);
         /// <summary>
         /// If card is plugged (Used by Detection event)
@@ -58,7 +64,6 @@ namespace EIDLib
         /// </summary>
         public bool IsRead = false;
         private Thread _pollingThread;
-        private bool _isDisposed = false;
 
         public delegate void Detection(string output, bool IsPlugged);
         /// <summary>
@@ -69,16 +74,9 @@ namespace EIDLib
         private String mFileName;
 
         /// <summary>
-        /// Show instance count in app
-        /// </summary>
-        public static int InstanceCount => _instanceCount;
-
-        private static int _instanceCount = 0;
-
-        /// <summary>
         /// Default constructor. Will instantiate the beidpkcs11.dll pkcs11 module
         /// </summary>
-        public ReadData()
+        private ReadData()
         {
             
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -111,20 +109,11 @@ namespace EIDLib
             }
 
 
-            if(_instanceCount == 0) // On évite d'avoir 2 thread de détection de carte actif
-            {
-                // Pour la détection de la carte
-                _pollingThread = new Thread(PollCardReader);
-                _pollingThread.IsBackground = true; // S'arrête tout seul quand le programme se ferme
-                _pollingThread.Name = "eID_Hardware_Polling";
-                _pollingThread.Start();
-            }
-            else
-            {
-                Console.WriteLine("Thead de détection de carte EID désactivé pour cause d'instances multiples");
-            }
-
-            _instanceCount += 1;
+            // Pour la détection de la carte
+            _pollingThread = new Thread(PollCardReader);
+            _pollingThread.IsBackground = true; // S'arrête tout seul quand le programme se ferme
+            _pollingThread.Name = "eID_Hardware_Polling";
+            _pollingThread.Start();
         }
 
         /// <summary>
@@ -174,7 +163,7 @@ namespace EIDLib
                 Console.WriteLine(e.Message);
             }
 
-            while (!_isDisposed)
+            while (true)
             {
                 if (Detect != null)
                 {
@@ -196,15 +185,20 @@ namespace EIDLib
                             else
                             {
                                 Console.WriteLine(e.Message);
-                                return;
+                                Thread.Sleep(2000);
+                                continue;
                             }
 
                         }
                         catch (Exception e)
                         {
                             Console.WriteLine(e.Message);
-                            return;
+                            Thread.Sleep(2000);
+                            continue;
                         }
+                        
+                        if (Detect == null) // C'est qu'on ne veut plus de détection
+                            continue;
                         
                         if (IsRead)
                         {
@@ -230,32 +224,14 @@ namespace EIDLib
                     catch (Exception e)
                     {
                         Console.WriteLine($"Erreur {e?.Message}");
+                        
+                        Thread.Sleep(2000);
                     }
                 }
 
             }
         }
-
-        public void Dispose()
-        {
-            try
-            {
-                
-                //module?.Dispose();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-            }
-            finally
-            {
-                //module = null;
-                _isDisposed = true;
-                _instanceCount -= 1;
-                
-                Thread.Sleep(200);
-            }
-        }
+        
 
         /// <summary>
         /// Name of native library (beidpkcs11)
