@@ -14,9 +14,9 @@
     <Platforms>AnyCPU;x64</Platforms> 
     <PackageProjectUrl></PackageProjectUrl> 
     <RepositoryUrl>https://github.com/jona-1993/EID-LIB</RepositoryUrl> 
-    <PackageVersion>1.1.9</PackageVersion> 
-    <AssemblyVersion>1.1.9.0</AssemblyVersion> 
-    <FileVersion>1.1.9.0</FileVersion> 
+    <PackageVersion>1.1.10</PackageVersion> 
+    <AssemblyVersion>1.1.10.0</AssemblyVersion> 
+    <FileVersion>1.1.10.0</FileVersion> 
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

@@ -48,6 +48,11 @@
             Detect if identity card is plugged or no
             </summary>
         </member>
+        <member name="P:EIDLib.ReadData.InstanceCount">
+            <summary>
+            Show instance count in app
+            </summary>
+        </member>
         <member name="M:EIDLib.ReadData.#ctor">
             <summary>
             Default constructor. Will instantiate the beidpkcs11.dll pkcs11 module

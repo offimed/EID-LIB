@@ -31,13 +31,14 @@ using Net.Sf.Pkcs11.Wrapper;
 
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Cryptography;
+using System.Threading;
 
 namespace EIDLib
 {
-    public class Sign
+    public class Sign : IDisposable
     {
-        private Module m = null;
         private String mFileName;
+        
         /// <summary>
         /// Default constructor. Will instantiate the beidpkcs11.dll pkcs11 module
         /// </summary>
@@ -68,25 +69,28 @@ namespace EIDLib
         /// <param name="privatekeylabel">Label for private key. Can be "Signature" or "Authentication"</param>
         /// <returns>Signed data.</returns>
         public byte[] DoSign(byte[] data, string privatekeylabel)
-        { 
-            if (m == null)
+        {
+            if (ReadData.module == null)
             {
                 // link with the pkcs11 DLL
-                m = Module.GetInstance(mFileName);
+                ReadData.module = Module.GetInstance(mFileName);
             } //m.Initialize();
 
+            ReadData._asyncLocker.Wait();
+            
             byte[] encryptedData = null;
             try
             {
-                Slot slot = m.GetSlotList(true)[0];
+                Slot slot = ReadData.module.GetSlotList(true)[0];
                 Session session = slot.Token.OpenSession(true);
                 ObjectClassAttribute classAttribute = new ObjectClassAttribute(CKO.PRIVATE_KEY);
                 ByteArrayAttribute keyLabelAttribute = new ByteArrayAttribute(CKA.LABEL);
                 keyLabelAttribute.Value = System.Text.Encoding.UTF8.GetBytes(privatekeylabel);
 
-                session.FindObjectsInit(new P11Attribute[] {
-                     classAttribute,
-                     keyLabelAttribute
+                session.FindObjectsInit(new P11Attribute[]
+                    {
+                        classAttribute,
+                        keyLabelAttribute
                     }
                 );
                 P11Object[] privatekeys = session.FindObjects(1) as P11Object[];
@@ -111,12 +115,24 @@ namespace EIDLib
                         }
                     }
                 }
+
+            }
+            catch (TokenException e)
+            {
+                if (e.ErrorCode == CKR.FUNCTION_CANCELED)
+                {
+                    Console.WriteLine("Function canceled");
+                }
+                else
+                {
+                    Console.WriteLine(e.Message);
+                }
                 
+                return null;
             }
             finally
             {
-                m.Dispose();
-                m = null;
+                ReadData._asyncLocker.Release();
             }
             return encryptedData;
         }
@@ -128,24 +144,30 @@ namespace EIDLib
         /// <returns>Signed challenge data.</returns>
         public byte[] DoChallenge(byte[] data)
         {
-            if (m == null)
+            ReadData._asyncLocker.Wait();
+            
+            if (ReadData.module == null)
             {
                 // link with the pkcs11 DLL
-                m = Module.GetInstance(mFileName);
+                ReadData.module = Module.GetInstance(mFileName);
             }
 
             byte[] encryptedData = null;
             try
             {
-                Slot slot = m.GetSlotList(true)[0];
+                Slot slot = ReadData.module.GetSlotList(true)[0];
 
                 if (slot == null)
                 {
                     Console.WriteLine("No card reader found");
+                    
+                    return null;
                 }
                 if (slot.Token == null)
                 {
                     Console.WriteLine("No card Found");
+
+                    return null;
                 }
 
                 Session session = slot.Token.OpenSession(true);
@@ -168,11 +190,29 @@ namespace EIDLib
             }
             finally
             {
-                m.Dispose();
-                m = null;
+                ReadData._asyncLocker.Release();
+                // m.Dispose();
+                // m = null;
             }
             return encryptedData;
         }
 
+        public void Dispose()
+        {
+            try
+            {
+                //ReadData.module?.Dispose();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+            finally
+            {
+                //ReadData.module = null;
+                
+                //Thread.Sleep(200);
+            }
+        }
     }
 }

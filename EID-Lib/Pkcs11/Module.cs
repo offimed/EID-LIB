@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using EIDLib;
 using Net.Sf.Pkcs11.Wrapper;
 
 using U_INT =
@@ -16,7 +17,7 @@ namespace Net.Sf.Pkcs11
     /// <summary>
     /// Wrapper around Pkcs11(Cryptoki) module (high-level).
     /// </summary>
-    public class Module : IDisposable
+    public class Module// : IDisposable
     {
         #region Members
 
@@ -135,10 +136,20 @@ namespace Net.Sf.Pkcs11
             p11Module.Finalize_();
         }
 
-        public void Dispose()
-        {
-            Finalize_();
-        }
+        // public void Dispose()
+        // {
+        //     // ReadData._asyncLocker.Wait(); // Je m'assure que je fais pas déjà quelque chose avant de fermer
+        //     //
+        //     // try
+        //     // {
+        //     //     Finalize_(); // Je décide de ne pas faire le finalize au dispose car utilisé dans deux classes différentes
+        //     // }
+        //     // finally
+        //     // {
+        //     //     ReadData._asyncLocker.Release();
+        //     // }
+        //     
+        // }
 
         #endregion
 
